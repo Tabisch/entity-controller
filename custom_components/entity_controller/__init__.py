@@ -172,10 +172,10 @@ PLATFORM_SCHEMA = cv.schema_with_slug_keys(ENTITY_SCHEMA)
 async def async_setup(hass, config):
     """Load graph configurations."""
 
-    if(((datetime.now()).astimezone()).tzinfo != dt.as_local(dt.now()).tzinfo):
+    if(((datetime.now()).astimezone()).tzinfo != ((dt.now()).astimezone()).tzinfo):
         _LOGGER.error("Timezones do not Match. Mismatched timezones may cause unintended behaviours.")
         _LOGGER.error("System DateTime: %s", ((datetime.now()).astimezone()).tzinfo )
-        _LOGGER.error("Home Assistant DateTime: %s", dt.as_local(dt.now()).tzinfo )
+        _LOGGER.error("Home Assistant DateTime: %s", ((dt.now()).astimezone()).tzinfo )
 
     component = EntityComponent(_LOGGER, DOMAIN, hass)
 
