@@ -197,7 +197,12 @@ async def async_setup(hass, config):
         dest="idle",
     )
 
-    machine.add_transition(trigger="constrain", source="*", dest="constrained")
+    machine.add_transition(
+        trigger="constrain",
+        source="*",
+        dest="constrained"
+    )
+    
     machine.add_transition(
         trigger="override",
         source=["pending", "idle", "active_timer", "blocked"],
@@ -210,7 +215,9 @@ async def async_setup(hass, config):
         dest="active",
     )
     machine.add_transition(
-        trigger="activate", source="active_timer", dest=None, after="_reset_timer"
+        trigger="activate",
+        source="active_timer",
+        dest=None, after="_reset_timer"
     )
 
     # Idle
@@ -237,9 +244,18 @@ async def async_setup(hass, config):
     machine.add_transition(trigger="enable", source="idle", dest=None, conditions=["is_state_entities_off"])
 
     # Blocked
-    machine.add_transition(trigger="enable", source="blocked", dest="idle", conditions=["is_state_entities_off"])
     machine.add_transition(
-        trigger="sensor_on", source="blocked", dest="blocked", conditions=["is_block_enabled"]
+        trigger="enable",
+        source="blocked",
+        dest="idle",
+        conditions=["is_state_entities_off"]
+    )
+
+    machine.add_transition(
+        trigger="sensor_on",
+        source="blocked",
+        dest="blocked",
+        conditions=["is_block_enabled"]
     )  # re-entering self-transition (on_enter callback executed.)
 
     # Overridden
@@ -263,6 +279,7 @@ async def async_setup(hass, config):
         dest="active",
         conditions=["is_state_entities_on", "is_sensor_on"],
     )  # This could be duration && on, but it will also work for any event sensor, so it's simpler to just write 'on'
+
     machine.add_transition(
         trigger="enable",
         source="overridden",
@@ -271,8 +288,12 @@ async def async_setup(hass, config):
     )
 
     machine.add_transition(
-        trigger="enter", source="active", dest="active_timer", unless="will_stay_on"
+        trigger="enter",
+        source="active",
+        dest="active_timer",
+        unless="will_stay_on"
     )
+
     machine.add_transition(
         trigger="enter",
         source="active",
@@ -282,7 +303,10 @@ async def async_setup(hass, config):
 
     # Active Timer
     machine.add_transition(
-        trigger="sensor_on", source="active_timer", dest=None, after="_reset_timer"
+        trigger="sensor_on",
+        source="active_timer",
+        dest=None,
+        after="_reset_timer"
     )
     # machine.add_transition(trigger='sensor_off',           source='active_timer',      dest=None,              conditions=['is_event_sensor'])
     machine.add_transition(
@@ -332,14 +356,27 @@ async def async_setup(hass, config):
         dest="idle",
         conditions=["is_state_entities_off"]
     )
-    machine.add_transition(trigger="control", source="active_timer",
-                           dest="blocked", conditions=["is_state_entities_on", "is_block_enabled"])
+    machine.add_transition(
+        trigger="control",
+        source="active_timer",
+        dest="blocked",
+        conditions=["is_state_entities_on", "is_block_enabled"]
+    )
     # When block is disabled, "control" will reset the active timer
-    machine.add_transition(trigger="control", source="active_timer",
-                           dest=None, after="_reset_timer", conditions=["is_state_entities_on"], unless="is_block_enabled")
+    machine.add_transition(
+        trigger="control",
+        source="active_timer",
+        dest=None,
+        after="_reset_timer",
+        conditions=["is_state_entities_on"], unless="is_block_enabled"
+    )
     # Manually enable blocked state
-    machine.add_transition(trigger="block_enable", source="active_timer",
-                           dest="blocked", conditions=["is_state_entities_on", "is_block_enabled"])
+    machine.add_transition(
+        trigger="block_enable",
+        source="active_timer",
+        dest="blocked",
+        conditions=["is_state_entities_on", "is_block_enabled"]
+    )
 
     # machine.add_transition(trigger='sensor_off',           source='active_stay_on',    dest=None)
     # machine.add_transition(trigger="timer_expires", source="active_stay_on", dest=None)
@@ -363,7 +400,12 @@ async def async_setup(hass, config):
         conditions=["is_override_state_on"],
     )
     # Enter blocked state when component is enabled and entity is on
-    machine.add_transition(trigger="blocked", source="constrained", dest="blocked", conditions=["is_block_enabled"])
+    machine.add_transition(
+        trigger="blocked",
+        source="constrained",
+        dest="blocked",
+        conditions=["is_block_enabled"]
+    )
 
     for myconfig in config[DOMAIN]:
         _LOGGER.info("Domain Configuration: " + str(myconfig))
