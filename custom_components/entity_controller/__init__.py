@@ -27,6 +27,7 @@ import logging
 import re
 from datetime import date, datetime, time, timedelta
 from threading import Timer
+import pickle
 import pprint
 from typing import Optional, List
 
@@ -44,6 +45,8 @@ import homeassistant.util.uuid as uuid_util
 from transitions import Machine
 from transitions.extensions import HierarchicalMachine as Machine
 from homeassistant.helpers.service import async_call_from_config
+
+from homeassistant.helpers.storage import Store
 
 DEPENDENCIES = ["light", "sensor", "binary_sensor", "cover", "fan", "media_player"]
 from .const import (
@@ -174,6 +177,7 @@ async def async_setup(hass, config):
     """Load graph configurations."""
 
     component = EntityComponent(_LOGGER, DOMAIN, hass)
+    stateStorage = StateStorage(store=Store(hass=hass,version=1,key=DOMAIN))
 
     _LOGGER.info(
         "If you have ANY issues with EntityController (v"
@@ -211,7 +215,7 @@ async def async_setup(hass, config):
 
     machine.add_transition(
         trigger="activate",
-        source=["idle", "blocked"],
+        source=["pending", "idle", "blocked"],
         dest="active",
     )
     machine.add_transition(
@@ -402,7 +406,7 @@ async def async_setup(hass, config):
     # Enter blocked state when component is enabled and entity is on
     machine.add_transition(
         trigger="blocked",
-        source="constrained",
+        source=["pending", "constrained"],
         dest="blocked",
         conditions=["is_block_enabled"]
     )
@@ -416,7 +420,7 @@ async def async_setup(hass, config):
             # _LOGGER.info("Config Item %s: %s", str(key), str(config))
             config["name"] = key
             m = None
-            m = EntityController(hass, config, machine)
+            m = EntityController(hass, config, machine, stateStorage)
             # machine.add_model(m.model)
             # m.model.after_model(config)
             devices.append(m)
@@ -426,6 +430,21 @@ async def async_setup(hass, config):
     _LOGGER.info("The %s component is ready!", DOMAIN)
 
     return True
+
+class StateStorage:
+    def __init__(self, store: Store) -> None:
+        self.store = store
+        self.states = self.store.async_load()
+
+    def get_State(self, key):
+        if(key in self.states.keys()):
+            return self.states[key]
+        else:
+            return ""
+        
+    def set_State(self, key, state):
+        self.states[key] = state
+        self.store.async_save(self.states)
 
 
 class EntityController(entity.Entity):
@@ -438,7 +457,7 @@ class EntityController(entity.Entity):
         async_entity_service_set_night_mode as async_set_night_mode,
     )
 
-    def __init__(self, hass, config, machine):
+    def __init__(self, hass, config, machine, stateStorage: StateStorage):
         self.attributes = {}
         self.may_update = False
         self.model = None
@@ -447,7 +466,7 @@ class EntityController(entity.Entity):
         if "friendly_name" in config:
             self.friendly_name = config.get("friendly_name")
         try:
-            self.model = Model(hass, config, machine, self)
+            self.model = Model(hass, config, machine, self, stateStorage)
         except AttributeError as e:
             _LOGGER.error(
                 "Configuration error! Please ensure you use plural keys for lists. e.g. sensors, entities." + e
@@ -536,7 +555,7 @@ class EntityController(entity.Entity):
 class Model:
     """ Represents the transitions state machine model """
 
-    def __init__(self, hass, config, machine, entity):
+    def __init__(self, hass, config, machine, entity: EntityController, stateStorage: StateStorage):
         self.ec_startup_time = datetime.now()
 
         self.hass = hass  # backwards reference to hass object
@@ -572,6 +591,8 @@ class Model:
         self.log = logging.getLogger(__name__ + "." + config.get(CONF_NAME))
         self.ignored_event_sources = []
         self.context = None
+
+        self.stateStorage = stateStorage
 
         self.log.debug(
             "Initialising EntityController entity with this configuration: "
@@ -613,7 +634,16 @@ class Model:
             self.override()
             self.update(overridden_at=str(datetime.now()))
         else:
-            self.start_monitoring()
+            match self.stateStorage(self.entity.entity_id):
+                case 'active':
+                    self.activate()
+                    self.log.debug("Recovered state: active")
+                case 'blocked':
+                    self.blocked()
+                    self.log.debug("Recovered state: blocked")
+                case _: 
+                    self.log.debug("Recovered state: No state recovered")
+                    self.start_monitoring()
 
     def update(self, wait=False, **kwargs):
         """ Called from different methods to report a state attribute change """
@@ -624,6 +654,8 @@ class Model:
 
         if wait == False:
             self.entity.do_update()
+
+        self.store.async_save()
 
     def finalize(self):
         self.entity.do_update()
