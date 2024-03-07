@@ -177,7 +177,7 @@ async def async_setup(hass, config):
     """Load graph configurations."""
 
     component = EntityComponent(_LOGGER, DOMAIN, hass)
-    stateStorage = StateStorage(store=Store(hass=hass,version=1,key=DOMAIN))
+    stateStorage = StateStorage(hass=hass,store=Store(hass=hass,version=1,key=DOMAIN))
 
     _LOGGER.info(
         "If you have ANY issues with EntityController (v"
