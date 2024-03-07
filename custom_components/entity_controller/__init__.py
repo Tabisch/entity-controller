@@ -555,7 +555,7 @@ class EntityController(entity.Entity):
 class Model:
     """ Represents the transitions state machine model """
 
-    def __init__(self, hass, config, machine, entity: EntityController, stateStorage: StateStorage):
+    def __init__(self, hass, config, machine: Machine, entity: EntityController, stateStorage: StateStorage):
         self.ec_startup_time = datetime.now()
 
         self.hass = hass  # backwards reference to hass object
@@ -655,7 +655,7 @@ class Model:
         if wait == False:
             self.entity.do_update()
 
-        self.store.async_save()
+        self.stateStorage.set_State(key=self.entity.entity_id, state=self.entity.model.state)
 
     def finalize(self):
         self.entity.do_update()
