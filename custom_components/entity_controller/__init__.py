@@ -34,7 +34,7 @@ from typing import Optional, List
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant.const import CONF_NAME, SUN_EVENT_SUNRISE, SUN_EVENT_SUNSET
-from homeassistant.core import callback, Context
+from homeassistant.core import callback, Context,HomeAssistant
 from homeassistant.helpers import entity, event, service
 from homeassistant.helpers.template import Template
 from homeassistant.helpers.entity_component import EntityComponent
@@ -432,9 +432,10 @@ async def async_setup(hass, config):
     return True
 
 class StateStorage:
-    def __init__(self, store: Store) -> None:
+    def __init__(self, hass: HomeAssistant, store: Store) -> None:
+        self.hass = hass
         self.store = store
-        self.states = asyncio.run(self.store.async_load())
+        self.states = self.hass.async_run_job(self.store.async_load())
 
     def get_State(self, key):
         if(key in self.states.keys()):
@@ -444,7 +445,7 @@ class StateStorage:
         
     def set_State(self, key, state):
         self.states[key] = state
-        asyncio.run(self.store.async_save(self.states))
+        self.hass.async_run_job(self.store.async_save(self.states))
 
 
 class EntityController(entity.Entity):
