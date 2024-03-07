@@ -177,7 +177,7 @@ async def async_setup(hass, config):
     """Load graph configurations."""
 
     component = EntityComponent(_LOGGER, DOMAIN, hass)
-    stateStorage = StateStorage(hass=hass,store=Store(hass=hass,version=1,key=DOMAIN))
+    stateStorage = StateStorage(store=Store(hass=hass,version=1,key=DOMAIN))
 
     _LOGGER.info(
         "If you have ANY issues with EntityController (v"
@@ -432,10 +432,10 @@ async def async_setup(hass, config):
     return True
 
 class StateStorage:
-    def __init__(self, hass: HomeAssistant, store: Store) -> None:
-        self.hass = hass
+    def __init__(self, store: Store) -> None:
+        self.loop = asyncio.get_event_loop()
         self.store = store
-        self.states = self.hass.async_run_job(self.store.async_load())
+        self.states = self.loop.run_until_complete(self.store.async_load())
 
     def get_State(self, key):
         if(key in self.states.keys()):
@@ -445,7 +445,7 @@ class StateStorage:
         
     def set_State(self, key, state):
         self.states[key] = state
-        self.hass.async_run_job(self.store.async_save(self.states))
+        self.loop.run_until_complete(self.store.async_save(self.states))
 
 
 class EntityController(entity.Entity):
