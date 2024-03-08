@@ -27,7 +27,7 @@ import logging
 import re
 from datetime import date, datetime, time, timedelta
 from threading import Timer
-import asyncio
+import pickle
 import pprint
 from typing import Optional, List
 
@@ -434,7 +434,7 @@ async def async_setup(hass, config):
 class StateStorage:
     def __init__(self, store: Store) -> None:
         self.store = store
-        self.states = asyncio.run(self.store.async_load())
+        self.states = self.store.async_load()
 
     def get_State(self, key):
         if(key in self.states.keys()):
@@ -444,7 +444,7 @@ class StateStorage:
         
     def set_State(self, key, state):
         self.states[key] = state
-        asyncio.run(self.store.async_save(self.states))
+        self.store.async_save(self.states)
 
 
 class EntityController(entity.Entity):
